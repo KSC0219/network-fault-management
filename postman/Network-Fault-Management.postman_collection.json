@@ -1,0 +1,87 @@
+{
+  "info": {
+    "name": "Network Fault Management API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "faultId", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Create fault",
+      "event": [{
+        "listen": "test",
+        "script": { "exec": [
+          "pm.test('201 Created', () => pm.response.to.have.status(201));",
+          "pm.test('status is OPEN', () => pm.expect(pm.response.json().status).to.eql('OPEN'));",
+          "pm.collectionVariables.set('faultId', pm.response.json().id);"
+        ]}
+      }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/faults",
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Link down on uplink port\",\n  \"description\": \"Gi0/1 lost carrier\",\n  \"deviceName\": \"router-blr-01\",\n  \"ipAddress\": \"10.0.0.1\",\n  \"severity\": \"HIGH\",\n  \"assignedTo\": \"noc-team\"\n}" }
+      }
+    },
+    {
+      "name": "List faults (filter)",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/faults?status=OPEN&severity=HIGH" }
+    },
+    {
+      "name": "Get fault by id",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"] } }],
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/faults/{{faultId}}" }
+    },
+    {
+      "name": "Update fault",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('severity updated', () => pm.expect(pm.response.json().severity).to.eql('CRITICAL'));"] } }],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/faults/{{faultId}}",
+        "body": { "mode": "raw", "raw": "{\n  \"title\": \"Link down on uplink port\",\n  \"deviceName\": \"router-blr-01\",\n  \"ipAddress\": \"10.0.0.1\",\n  \"severity\": \"CRITICAL\",\n  \"assignedTo\": \"noc-team\"\n}" }
+      }
+    },
+    {
+      "name": "Move to IN_PROGRESS",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/faults/{{faultId}}/status",
+        "body": { "mode": "raw", "raw": "{ \"status\": \"IN_PROGRESS\" }" }
+      }
+    },
+    {
+      "name": "Resolve fault",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('resolvedAt set', () => pm.expect(pm.response.json().resolvedAt).to.not.be.null);"] } }],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/faults/{{faultId}}/status",
+        "body": { "mode": "raw", "raw": "{ \"status\": \"RESOLVED\", \"resolutionNotes\": \"Replaced faulty SFP module\" }" }
+      }
+    },
+    {
+      "name": "Summary",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/faults/summary" }
+    },
+    {
+      "name": "Invalid request (expect 400)",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('400 Bad Request', () => pm.response.to.have.status(400));"] } }],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/faults",
+        "body": { "mode": "raw", "raw": "{ \"title\": \"\" }" }
+      }
+    },
+    {
+      "name": "Delete fault",
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"] } }],
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/faults/{{faultId}}" }
+    }
+  ]
+}
